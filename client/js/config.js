@@ -18,6 +18,7 @@ var VEConfig = (function () {
     threshold: 0.5, minSilence: 0.4, tailPad: 0.25,
     elevenKey: "", anthropicKey: "",
     mogrtPath: "", captionTrack: 1,    // captionTrack: 0-based video track; 1 = V2
+    captionTextLayer: "",              // MOGRT text layer name override ("" = auto-detect)
     takeModel: "claude-sonnet-4-6",    // Claude model for take-select (v0.3)
     targetSecs: 90                     // target length for the curated cut
   };

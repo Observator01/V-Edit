@@ -37,6 +37,7 @@
     document.getElementById("cfg-anthropic").value = cfg.anthropicKey;
     document.getElementById("cfg-mogrt").value = cfg.mogrtPath;
     document.getElementById("cfg-track").value = (cfg.captionTrack || 1) + 1; // show 1-based
+    document.getElementById("cfg-captiontext").value = cfg.captionTextLayer || "";
     document.getElementById("cfg-takemodel").value = cfg.takeModel || "claude-sonnet-4-6";
     document.getElementById("cfg-target").value = cfg.targetSecs || 90;
   }
@@ -49,6 +50,7 @@
     cfg.anthropicKey = document.getElementById("cfg-anthropic").value.trim();
     cfg.mogrtPath = document.getElementById("cfg-mogrt").value.trim();
     cfg.captionTrack = Math.max(1, (parseInt(document.getElementById("cfg-track").value, 10) || 2) - 1);
+    cfg.captionTextLayer = document.getElementById("cfg-captiontext").value.trim();
     cfg.takeModel = document.getElementById("cfg-takemodel").value.trim() || "claude-sonnet-4-6";
     cfg.targetSecs = parseInt(document.getElementById("cfg-target").value, 10) || 90;
     statusEl.textContent = VEConfig.save(cfg) ? "saved" : "save failed";

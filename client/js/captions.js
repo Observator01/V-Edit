@@ -64,19 +64,27 @@ var VECaptions = (function () {
     var cues = groupCues(transcript.words);
     if (!cues.length) throw new Error("no cues");
 
+    var hint = (cfg.captionTextLayer || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
     var before = await evalHost("ve_snapshotLockedCut()");
     log("clear V" + (track + 1) + ": " + await evalHost("ve_clearCaptionTrack(" + track + ")"));
-    var ok = 0, fail = 0;
+    var ok = 0, fail = 0, notext = 0, notextSample = "";
     for (var i = 0; i < cues.length; i++) {
       var a = VEAudio.snap(cues[i].start, fps);
       var b = VEAudio.snap(cues[i].end, fps);
       var txt = cues[i].text.replace(/"/g, '\\"').replace(/\n/g, " ");
-      var r = await evalHost('ve_placeCaption("' + cfg.mogrtPath.replace(/\\/g, "/") +
-        '", ' + track + ', ' + a + ', ' + b + ', "' + txt + '")');
-      if (String(r).indexOf("ok|") === 0) ok++; else { fail++; log("  cue " + i + " " + r); }
+      var r = String(await evalHost('ve_placeCaption("' + cfg.mogrtPath.replace(/\\/g, "/") +
+        '", ' + track + ', ' + a + ', ' + b + ', "' + txt + '", "' + hint + '")'));
+      if (r.indexOf("ok|notext") === 0) { notext++; if (!notextSample) notextSample = r; }
+      else if (r.indexOf("ok|") === 0) ok++;
+      else { fail++; log("  cue " + i + " " + r); }
     }
     var after = await evalHost("ve_snapshotLockedCut()");
-    log("placed " + ok + " captions (" + fail + " failed) on V" + (track + 1));
+    log("placed " + (ok + notext) + " captions (" + fail + " failed) on V" + (track + 1));
+    if (notext) {
+      log("⚠ but could NOT set text on " + notext + " — the template's text layer wasn't matched.");
+      log("  " + notextSample);  // shows layers=… so you can read the real layer name
+      log("  → put that text-layer name in Settings ▸ \"Caption text layer\", or rename the layer to \"Text\" and re-export.");
+    }
     log("locked-cut before/after: " + before + " -> " + after +
       (before === after ? "  (V1/A1 untouched ✓)" : "  !! CHANGED — undo !!"));
   }

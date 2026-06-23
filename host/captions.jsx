@@ -23,8 +23,12 @@ function ve_clearCaptionTrack(trackIdx) {
 }
 
 // Place one MOGRT caption on videoTrack[trackIdx] at [tlStart,tlEnd], set its text.
-// Returns "ok|start-end" or "ERR:...".
-function ve_placeCaption(mogrtPath, trackIdx, tlStart, tlEnd, text) {
+// textLayer (optional) = the template's text component/layer name, when auto-detect can't
+// find it (a MOGRT component's displayName is the creator's layer name — often not "Text").
+// Returns "ok|start-end", or "ok|notext|start-end|layers=a/b/c" when the text couldn't be set
+// (caption placed but no editable text component matched — names listed so the user can pick one),
+// or "ERR:...".
+function ve_placeCaption(mogrtPath, trackIdx, tlStart, tlEnd, text, textLayer) {
     if (trackIdx < 1) return "ERR:refuse_track0";
     var seq = app.project.activeSequence;
     if (!seq) return "ERR:no_active_sequence";
@@ -45,15 +49,39 @@ function ve_placeCaption(mogrtPath, trackIdx, tlStart, tlEnd, text) {
     // duration
     try { var T = new Time(); T.seconds = tlEnd; clip.end = T; } catch (e2) {}
 
-    // text: Text component Source Text setValue (plain string works)
+    // text: set the MOGRT Source Text. The component displayName = the creator's layer name
+    // (varies per template, may be Thai), and property displayName is LOCALIZED — so don't rely
+    // on a single hardcoded name. Try, in order: explicit hint → a "Source Text" property →
+    // legacy "Text" component. (getMGTComponent() returns null in v26, so iterate components.)
+    var comps = clip.components;
+    var names = [];
+    for (var ni = 0; ni < comps.numItems; ni++) { names.push(comps[ni].displayName); }
+    var setOk = false;
     try {
-        for (var ci = 0; ci < clip.components.numItems; ci++) {
-            if (clip.components[ci].displayName === "Text") {
-                clip.components[ci].properties[0].setValue(text, true);
-                break;
+        // pass 1 — explicit hint: component whose displayName matches textLayer
+        if (textLayer) {
+            for (var i1 = 0; i1 < comps.numItems && !setOk; i1++) {
+                if (comps[i1].displayName === textLayer && comps[i1].properties.numItems) {
+                    comps[i1].properties[0].setValue(text, 1); setOk = true;
+                }
+            }
+        }
+        // pass 2 — a property literally named "Source Text" (English-locale MOGRT)
+        for (var i2 = 0; i2 < comps.numItems && !setOk; i2++) {
+            var props = comps[i2].properties;
+            for (var j2 = 0; j2 < props.numItems && !setOk; j2++) {
+                if (props[j2].displayName === "Source Text") { props[j2].setValue(text, 1); setOk = true; }
+            }
+        }
+        // pass 3 — legacy: component named "Text", its first property
+        for (var i3 = 0; i3 < comps.numItems && !setOk; i3++) {
+            if (comps[i3].displayName === "Text" && comps[i3].properties.numItems) {
+                comps[i3].properties[0].setValue(text, 1); setOk = true;
             }
         }
     } catch (e3) { return "ERR:settext:" + e3; }
 
-    return "ok|" + clip.start.seconds.toFixed(2) + "-" + clip.end.seconds.toFixed(2);
+    var span = clip.start.seconds.toFixed(2) + "-" + clip.end.seconds.toFixed(2);
+    if (!setOk) return "ok|notext|" + span + "|layers=" + names.join("/");
+    return "ok|" + span;
 }
