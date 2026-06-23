@@ -7,18 +7,26 @@ caption — so you keep the creative work (b-roll, transitions, motion, SFX).
 Built on a workflow battle-tested on real Thai talking-head product ads. Designed
 to **learn from your finished edits** and get better over time.
 
-> Status: **v0.2 — Auto-Cut Silence + Transcribe + MOGRT Captions.** See [docs/ROADMAP.md](docs/ROADMAP.md).
+> Status: **v0.3 — Auto-Cut Silence + Transcribe + MOGRT Captions + AI Take-Select + Learning.** See [docs/ROADMAP.md](docs/ROADMAP.md).
 
-## What it does (v0.1)
+## What it does
 
 - **Auto-Cut Silence** — neural **Silero VAD** removes dead air from the active
   sequence, frame-snapped (no 1-frame slivers) and **Thai-particle-safe** (keeps
-  soft endings มะคะ/มั้ย/ครับ/นะ that energy-threshold tools clip).
-- Works only on **V1 + A1** of the active sequence — your upper tracks (captions,
-  graphics) are never touched.
+  soft endings มะคะ/มั้ย/ครับ/นะ that energy-threshold tools clip). Works only on
+  **V1 + A1** — your upper tracks (captions, graphics) are never touched.
+- **Transcribe** — **ElevenLabs Scribe** (best Thai, word-level) from the panel.
+- **MOGRT Captions** — places your exported `.mogrt` style on V2/V3, timed to the
+  speech, **additive** (V1/A1 untouched, verified before/after).
+- **AI Take-Select** (v0.3) — **Claude** reads the transcript, keeps the best takes
+  (drops retakes/false-starts/bloopers), curates to a target length, and builds a
+  **new `… - CLEAN` sequence**. Your raw recording is never modified — preview the
+  selection first, then build.
+- **Learning** (v0.3) — point V-Edit at one of your *finished* cuts and it learns your
+  style (target length, segment rhythm, the pauses you cut, caption cadence) to make the
+  next take-select match how you actually edit. Everything stays local.
 
-Coming: Transcribe (ElevenLabs Scribe, best Thai), MOGRT captions, AI take-select
-(Claude), repeat-detection, zoom. See the roadmap.
+Coming: repeat-detection, auto-zoom, UXP port. See the roadmap.
 
 ## Why AI does *some* of the edit, not all
 
@@ -43,8 +51,12 @@ Requires **Premiere Pro 24+**, **Node-enabled CEP**, **system ffmpeg** on PATH.
 ## Use
 
 1. Open a sequence (a Thai talking-head cut on V1/A1).
-2. **Settings** → set thresholds; add API keys for later features.
+2. **Settings** → set thresholds; add your ElevenLabs + Anthropic keys; pick your `.mogrt`.
 3. **Auto-Cut** → *Auto-Cut Silence*. Scrub to verify (Thai endings intact, no slivers).
+4. **Take-Select** → optionally *Analyze* a finished cut first (learns your style), then
+   *1 · Select* (preview the kept takes) → *2 · Build* (creates a new `… - CLEAN` sequence;
+   your raw cut is untouched). Add b-roll / SFX / captions yourself.
+5. **Captions** → *Transcribe* then *Generate Captions* (MOGRT on V2/V3, additive).
 
 Your API keys live only in `~/.v-edit/config.json` and are sent only to the
 provider's own API.

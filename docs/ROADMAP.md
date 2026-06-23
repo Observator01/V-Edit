@@ -16,11 +16,16 @@ into the extension, one tab at a time.
   (V1/A1 untouched, verified via before/after snapshot).
 - TODO next: spoken-number→digit, 2-color (white+orange) stacking.
 
-## v0.3 — AI take-select + Learning
-- Claude reads the transcript → selects best takes (drop retakes/bloopers),
-  curate to target length. Few-shot prompt seeded from the **learning corpus**.
-- **Learning analyzer** (see LEARNING.md): ingest the user's finished `.prproj`
-  → style profile + correction corpus → tune thresholds, prompts, caption defaults.
+## v0.3 — AI take-select + Learning ✅ (this release)
+- Claude (user key) reads the Scribe transcript → selects best takes (drops
+  retakes/false-starts/bloopers), curates to a target length, then builds a NEW
+  `… - CLEAN` sequence (clone→clear→place, frame-snapped). The raw cut is never touched.
+- **Learning analyzer**: reads the user's finished sequence read-only (in-Premiere, no
+  `.prproj` parsing) → `style-profile.json` (target length, segment rhythm, the pauses
+  the editor cuts, caption cadence, b-roll coverage) → seeds the take-select prompt.
+- Two-step UX (Select preview → Build) mirrors the proven `--dry` caution. The auto-EDL
+  is saved to `~/.v-edit/last-edl.json` to seed the future "learn from corrections" diff.
+- TODO next: full mistake-diff loop (auto-EDL vs the user's corrected final).
 
 ## v0.4 — Repeat detection + Auto-Zoom
 - Detect duplicate/restarted phrases → suggest cuts.

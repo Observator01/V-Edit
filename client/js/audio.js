@@ -34,7 +34,11 @@ var VEAudio = (function () {
   }
 
   // parse ve_probeSequence() output -> { name, fps, clips:[{tl_s,tl_e,src_i,src_o,media}] }
+  // On a host "ERR:..." sentinel (e.g. no active sequence) return { err } so callers can
+  // surface the real cause instead of a misleading "no clips" / "sequence changed" message.
   function parseProbe(out) {
+    if (!out || out.indexOf("ERR:") === 0)
+      return { name: out || "", fps: NaN, clips: [], err: out || "no host response" };
     var lines = out.split("\n");
     var head = lines[0].split("|");
     var clips = [];

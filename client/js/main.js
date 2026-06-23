@@ -13,6 +13,7 @@
   }
   var log = mkLog("log");        // Auto-Cut
   var clog = mkLog("clog");      // Captions
+  var tslog = mkLog("tslog");    // Take-Select
   function evalHost(code) { return new Promise(function (res) { cs.evalScript(code, res); }); }
 
   // ---- tabs ----
@@ -36,6 +37,8 @@
     document.getElementById("cfg-anthropic").value = cfg.anthropicKey;
     document.getElementById("cfg-mogrt").value = cfg.mogrtPath;
     document.getElementById("cfg-track").value = (cfg.captionTrack || 1) + 1; // show 1-based
+    document.getElementById("cfg-takemodel").value = cfg.takeModel || "claude-sonnet-4-6";
+    document.getElementById("cfg-target").value = cfg.targetSecs || 90;
   }
   fillSettings();
   document.getElementById("btn-save").addEventListener("click", function () {
@@ -46,6 +49,8 @@
     cfg.anthropicKey = document.getElementById("cfg-anthropic").value.trim();
     cfg.mogrtPath = document.getElementById("cfg-mogrt").value.trim();
     cfg.captionTrack = Math.max(1, (parseInt(document.getElementById("cfg-track").value, 10) || 2) - 1);
+    cfg.takeModel = document.getElementById("cfg-takemodel").value.trim() || "claude-sonnet-4-6";
+    cfg.targetSecs = parseInt(document.getElementById("cfg-target").value, 10) || 90;
     statusEl.textContent = VEConfig.save(cfg) ? "saved" : "save failed";
   });
   document.getElementById("btn-browse").addEventListener("click", function () {
@@ -99,6 +104,39 @@
   document.getElementById("btn-captions").addEventListener("click", async function () {
     var btn = this; btn.disabled = true;
     try { await VECaptions.doGenerate(cfg, clog); } catch (e) { clog("ERROR: " + e.message); }
+    btn.disabled = false;
+  });
+
+  // ---- Take-Select + Learning ----
+  function refreshProfileSummary() {
+    var el = document.getElementById("profile-summary");
+    try {
+      var p = VELearning.loadProfile();
+      el.textContent = "profile: " + (p ? VELearning.summarize(p) : "— (none yet)");
+    } catch (e) { el.textContent = "profile: — (none yet)"; }
+  }
+  refreshProfileSummary();
+
+  document.getElementById("btn-learn").addEventListener("click", async function () {
+    var btn = this; btn.disabled = true; document.getElementById("tslog").textContent = "";
+    try { await VELearning.analyze(cfg, tslog); refreshProfileSummary(); }
+    catch (e) { tslog("ERROR: " + e.message); }
+    btn.disabled = false;
+  });
+
+  // keep cfg.targetSecs synced with the on-tab field before selecting
+  function syncTarget() {
+    cfg.targetSecs = parseInt(document.getElementById("cfg-target").value, 10) || cfg.targetSecs || 90;
+  }
+  document.getElementById("btn-select").addEventListener("click", async function () {
+    var btn = this; btn.disabled = true; document.getElementById("tslog").textContent = "";
+    syncTarget();
+    try { await VETakeSelect.doSelect(cfg, tslog); } catch (e) { tslog("ERROR: " + e.message); }
+    btn.disabled = false;
+  });
+  document.getElementById("btn-build").addEventListener("click", async function () {
+    var btn = this; btn.disabled = true;
+    try { await VETakeSelect.doBuild(cfg, tslog); } catch (e) { tslog("ERROR: " + e.message); }
     btn.disabled = false;
   });
 })();

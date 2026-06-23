@@ -40,6 +40,24 @@ Two real edits from this project's build phase, to seed v0.3:
 The analyzer (v0.3) reads these read-only, extracts the table above, and writes a
 `style-profile.json` consumed by the take-select + caption stages.
 
+## v0.3 implemented
+
+The analyzer runs **inside Premiere** — no `.prproj` parsing. `ve_analyzeFinishedSeq()`
+(host) dumps the active finished sequence; `client/js/learning.js` distills
+`~/.v-edit/style-profile.json`:
+
+- `targetSecs` — the finished length (curation budget for take-select).
+- `segCount` / `segMedianDur` — how many cuts, typical clean-segment length.
+- `pauseMedian` — median gap between consecutive kept source ranges = the pause/retake
+  length the editor cuts (feeds VAD/min-silence intuition + the take-select prompt).
+- `caption` — densest upper track → `{track, count, avgDur}` (caption cadence).
+- `brollCoveragePct` — share of the timeline covered by the remaining upper tracks.
+
+Take-select loads this profile (`VELearning.loadProfile()`) and injects it into the Claude
+prompt so the selection matches the editor's real rhythm. The auto-EDL of each Build is saved
+to `~/.v-edit/last-edl.json` — the seed for the **learn-from-corrections** diff (next: compare
+that EDL against the user's corrected final and update defaults/prompt).
+
 ## Privacy
 
 Analysis runs locally; the corpus and profile never leave the machine. No telemetry.

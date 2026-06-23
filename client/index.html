@@ -15,6 +15,7 @@
 
   <nav class="tabs">
     <button class="tab active" data-tab="silence">Auto-Cut</button>
+    <button class="tab" data-tab="takeselect">Take-Select</button>
     <button class="tab" data-tab="captions">Captions</button>
     <button class="tab" data-tab="settings">Settings</button>
   </nav>
@@ -25,6 +26,23 @@
       (รักษาคำลงท้ายไทย). ทำงานบน V1+A1 ของ active sequence เท่านั้น.</p>
     <button id="btn-cut" class="primary">Auto-Cut Silence</button>
     <pre id="log" class="log"></pre>
+  </section>
+
+  <!-- Take-Select -->
+  <section class="panel" id="tab-takeselect">
+    <div class="card">
+      <p class="hint">เรียนรู้สไตล์จากคลิปที่ตัดเสร็จ — เปิด sequence ที่ตัดแล้ว (เช่น "… - CLEAN")
+        แล้วกด Analyze. V-Edit ดึง target length / จังหวะ segment / ช่วงเงียบที่คุณตัด มาช่วยเลือก take.</p>
+      <button id="btn-learn" class="ghost">Analyze finished cut → profile</button>
+      <p id="profile-summary" class="hint mono">profile: —</p>
+    </div>
+    <p class="hint">ให้ AI เลือก take ที่ดีที่สุดจาก recording ดิบ (ตัด retake/พูดผิด/บกพร่อง) →
+      สร้าง sequence ใหม่ "<i>ชื่อ</i> - CLEAN". <b>ไม่แตะคลิปดิบ</b>. ต้องตั้ง ElevenLabs + Anthropic key.</p>
+    <label>Target length (วินาที)
+      <input type="number" id="cfg-target" min="15" max="600" step="5" value="90"></label>
+    <button id="btn-select" class="primary" style="margin-top:6px">1 · Select (preview)</button>
+    <button id="btn-build" class="primary" style="margin-top:8px">2 · Build CLEAN sequence</button>
+    <pre id="tslog" class="log"></pre>
   </section>
 
   <!-- Captions -->
@@ -49,6 +67,8 @@
       <input type="password" id="cfg-eleven" placeholder="sk_..."></label>
     <label>Anthropic API key (take-select — v0.3)
       <input type="password" id="cfg-anthropic" placeholder="sk-ant-..."></label>
+    <label>Take-select model
+      <input type="text" id="cfg-takemodel" placeholder="claude-sonnet-4-6"></label>
     <hr>
     <label>Caption .mogrt template (your exported style)
       <input type="text" id="cfg-mogrt" placeholder="C:\…\style.mogrt"></label>
@@ -65,6 +85,8 @@
   <script src="js/vad.js"></script>
   <script src="js/providers.js"></script>
   <script src="js/captions.js"></script>
+  <script src="js/learning.js"></script>
+  <script src="js/takeselect.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

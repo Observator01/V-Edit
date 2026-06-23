@@ -17,7 +17,9 @@ var VEConfig = (function () {
   var defaults = {
     threshold: 0.5, minSilence: 0.4, tailPad: 0.25,
     elevenKey: "", anthropicKey: "",
-    mogrtPath: "", captionTrack: 1   // captionTrack: 0-based video track; 1 = V2
+    mogrtPath: "", captionTrack: 1,    // captionTrack: 0-based video track; 1 = V2
+    takeModel: "claude-sonnet-4-6",    // Claude model for take-select (v0.3)
+    targetSecs: 90                     // target length for the curated cut
   };
 
   function load() {
