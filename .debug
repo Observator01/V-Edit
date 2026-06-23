@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Enables Chrome remote debugging for unsigned dev load.
+     Open http://localhost:8088 in Chrome while the panel is running. -->
+<ExtensionList>
+  <Extension Id="com.observator01.vedit.panel">
+    <HostList>
+      <Host Name="PPRO" Port="8088"/>
+    </HostList>
+  </Extension>
+</ExtensionList>

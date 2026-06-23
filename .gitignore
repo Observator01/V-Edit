@@ -1,0 +1,8 @@
+node_modules/
+vendor/silero_vad.onnx
+vendor/onnxruntime-node/
+*.log
+.DS_Store
+Thumbs.db
+# local keys never go in git (they live in ~/.v-edit/config.json)
+config.json
