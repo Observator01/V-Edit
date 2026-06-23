@@ -8,11 +8,13 @@ into the extension, one tab at a time.
 - Silero VAD (onnxruntime-node), Thai-particle tail-pad.
 - Ripple-cut on V1+A1, frame-snapped, re-probe guard.
 
-## v0.2 — Transcribe + Captions
+## v0.2 — Transcribe + Captions ✅ (this release)
 - ElevenLabs Scribe (Thai, word-level) from the panel (user key).
-- Clean Thai SRT: word-safe wrap (pythainlp-equivalent), spoken-number→digit.
-- MOGRT captions: user exports their styled `.mogrt` once → V-Edit places on
-  V2/V3 timed to lines + sets text (`setValue`), **additive** (V1/A1 untouched).
+- Cue grouping: break at pauses (never mid-word), cap chars/dur.
+- MOGRT captions: user exports their styled `.mogrt` once → V-Edit places on the
+  chosen track (V2/V3) timed to cues + sets text (`setValue`), **additive**
+  (V1/A1 untouched, verified via before/after snapshot).
+- TODO next: spoken-number→digit, 2-color (white+orange) stacking.
 
 ## v0.3 — AI take-select + Learning
 - Claude reads the transcript → selects best takes (drop retakes/bloopers),

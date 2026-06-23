@@ -16,7 +16,8 @@ var VEConfig = (function () {
 
   var defaults = {
     threshold: 0.5, minSilence: 0.4, tailPad: 0.25,
-    elevenKey: "", anthropicKey: ""
+    elevenKey: "", anthropicKey: "",
+    mogrtPath: "", captionTrack: 1   // captionTrack: 0-based video track; 1 = V2
   };
 
   function load() {

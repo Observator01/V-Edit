@@ -15,7 +15,7 @@
 
   <nav class="tabs">
     <button class="tab active" data-tab="silence">Auto-Cut</button>
-    <button class="tab" data-tab="captions" disabled title="v0.2">Captions</button>
+    <button class="tab" data-tab="captions">Captions</button>
     <button class="tab" data-tab="settings">Settings</button>
   </nav>
 
@@ -25,6 +25,15 @@
       (รักษาคำลงท้ายไทย). ทำงานบน V1+A1 ของ active sequence เท่านั้น.</p>
     <button id="btn-cut" class="primary">Auto-Cut Silence</button>
     <pre id="log" class="log"></pre>
+  </section>
+
+  <!-- Captions -->
+  <section class="panel" id="tab-captions">
+    <p class="hint">ถอดเสียงไทยด้วย ElevenLabs Scribe → วาง MOGRT caption บน track ที่เลือก
+      (V2/V3) ตรงจังหวะพูด. ไม่แตะ V1/A1. ต้องตั้ง key + .mogrt template ใน Settings.</p>
+    <button id="btn-transcribe" class="primary">1 · Transcribe</button>
+    <button id="btn-captions" class="primary" style="margin-top:8px">2 · Generate Captions</button>
+    <pre id="clog" class="log"></pre>
   </section>
 
   <!-- Settings -->
@@ -40,14 +49,22 @@
       <input type="password" id="cfg-eleven" placeholder="sk_..."></label>
     <label>Anthropic API key (take-select — v0.3)
       <input type="password" id="cfg-anthropic" placeholder="sk-ant-..."></label>
+    <hr>
+    <label>Caption .mogrt template (your exported style)
+      <input type="text" id="cfg-mogrt" placeholder="C:\…\style.mogrt"></label>
+    <button id="btn-browse" style="width:100%;padding:6px;margin-top:2px;background:#3a3a3a;border:none;border-radius:3px;color:#ddd;cursor:pointer">Browse…</button>
+    <label>Caption track (2 = V2)
+      <input type="number" id="cfg-track" min="2" max="20" step="1" value="2"></label>
     <button id="btn-save" class="primary">Save</button>
     <p class="hint">Key เก็บในเครื่องคุณเท่านั้น (local config) — ไม่ส่งไปไหนนอกจาก provider โดยตรง.</p>
   </section>
 
   <script src="js/CSInterface.js"></script>
   <script src="js/config.js"></script>
+  <script src="js/audio.js"></script>
   <script src="js/vad.js"></script>
   <script src="js/providers.js"></script>
+  <script src="js/captions.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

@@ -9,8 +9,10 @@
 
 //@include "probe.jsx"
 //@include "edit-ops.jsx"
+//@include "captions.jsx"
 #include "probe.jsx"
 #include "edit-ops.jsx"
+#include "captions.jsx"
 
 // Sequence frame rate from timebase ticks (254016000000 ticks/sec).
 function ve_seqFps() {

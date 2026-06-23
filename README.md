@@ -7,7 +7,7 @@ caption — so you keep the creative work (b-roll, transitions, motion, SFX).
 Built on a workflow battle-tested on real Thai talking-head product ads. Designed
 to **learn from your finished edits** and get better over time.
 
-> Status: **v0.1 — Auto-Cut Silence** (first working feature). See [docs/ROADMAP.md](docs/ROADMAP.md).
+> Status: **v0.2 — Auto-Cut Silence + Transcribe + MOGRT Captions.** See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## What it does (v0.1)
 
