@@ -54,6 +54,11 @@ function ve_placeCaption(mogrtPath, trackIdx, tlStart, tlEnd, text, textLayer) {
     // not "Text") and is localized — so match the hint against component AND property names,
     // then fall back to a "Source Text" property / legacy "Text" component.
     // (getMGTComponent() returns null in v26, so iterate clip.components.)
+    // IMPORTANT: setValue(text, 0) — updateUI MUST be 0. For a canAnimate:false (static EGP-store)
+    // text control, updateUI=1 forces an Essential-Graphics panel sync between the generate loop's
+    // evalScript calls that re-reads the instance and reverts our text to the template default —
+    // the caption then shows for ONE frame and vanishes. updateUI=0 still writes the value (it just
+    // doesn't force a panel refresh), so it persists like a manual edit, for static AND animatable templates.
     var comps = clip.components;
     var map = [];   // diagnostic: compName[prop0/prop1/...] for every component
     for (var ni = 0; ni < comps.numItems; ni++) {
@@ -67,11 +72,11 @@ function ve_placeCaption(mogrtPath, trackIdx, tlStart, tlEnd, text, textLayer) {
         if (textLayer) {
             for (var i1 = 0; i1 < comps.numItems && !setOk; i1++) {
                 if (comps[i1].displayName === textLayer && comps[i1].properties.numItems) {
-                    comps[i1].properties[0].setValue(text, 1); setOk = true;
+                    comps[i1].properties[0].setValue(text, 0); setOk = true;
                 }
                 var p1 = comps[i1].properties;
                 for (var k1 = 0; k1 < p1.numItems && !setOk; k1++) {
-                    if (p1[k1].displayName === textLayer) { p1[k1].setValue(text, 1); setOk = true; }
+                    if (p1[k1].displayName === textLayer) { p1[k1].setValue(text, 0); setOk = true; }
                 }
             }
         }
@@ -79,13 +84,13 @@ function ve_placeCaption(mogrtPath, trackIdx, tlStart, tlEnd, text, textLayer) {
         for (var i2 = 0; i2 < comps.numItems && !setOk; i2++) {
             var p2 = comps[i2].properties;
             for (var k2 = 0; k2 < p2.numItems && !setOk; k2++) {
-                if (p2[k2].displayName === "Source Text") { p2[k2].setValue(text, 1); setOk = true; }
+                if (p2[k2].displayName === "Source Text") { p2[k2].setValue(text, 0); setOk = true; }
             }
         }
         // pass 3 — legacy: component named "Text", its first property
         for (var i3 = 0; i3 < comps.numItems && !setOk; i3++) {
             if (comps[i3].displayName === "Text" && comps[i3].properties.numItems) {
-                comps[i3].properties[0].setValue(text, 1); setOk = true;
+                comps[i3].properties[0].setValue(text, 0); setOk = true;
             }
         }
     } catch (e3) { return "ERR:settext:" + e3; }
