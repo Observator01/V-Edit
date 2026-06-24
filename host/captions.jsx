@@ -55,51 +55,61 @@ function ve_placeCaption(mogrtPath, trackIdx, tlStart, tlEnd, text, textLayer) {
     try { var T = new Time(); T.seconds = tlEnd; clip.end = T; } catch (e2) {}
 
     // ---- set the caption text ----
+    // AE-authored MOGRTs expose editable controls via getMGTComponent() — setting those drives the
+    // render. Premiere-authored MOGRTs return null here (their exposed essential property overrides
+    // the raw text layer and is unreachable in v26), so we also try the raw clip.components.
+    var mgt = null;
+    try { mgt = clip.getMGTComponent ? clip.getMGTComponent() : null; } catch (em) { mgt = null; }
+
     var comps = clip.components;
-    var map = [];   // diagnostic: compName[prop0/prop1/...] for every component
+    var map = [];   // diagnostic: name[prop0/prop1/...]
+    if (mgt && mgt.properties) {
+        var mn = [];
+        for (var mj = 0; mj < mgt.properties.numItems; mj++) mn.push(mgt.properties[mj].displayName);
+        map.push("MGT[" + mn.join("/") + "]");
+    }
     for (var ni = 0; ni < comps.numItems; ni++) {
         var pn = [];
         for (var pj = 0; pj < comps[ni].properties.numItems; pj++) { pn.push(comps[ni].properties[pj].displayName); }
         map.push(comps[ni].displayName + "[" + pn.join("/") + "]");
     }
 
-    // Proper MOGRT Source-Text write: the value is JSON {textEditValue, fontTextRunLength, ...}.
-    // Returns true if this property was a JSON text param and we set it.
-    function trySetJSON(prop) {
+    // MOGRT Source-Text value is JSON {textEditValue, fontTextRunLength, ...}; set those fields.
+    function trySetJSON(prop, ui) {
         try {
             var obj = JSON.parse(prop.getValue());
             if (obj && typeof obj.textEditValue !== "undefined") {
                 obj.textEditValue = text;
                 obj.fontTextRunLength = [text.length];   // one font run over the whole string
-                prop.setValue(JSON.stringify(obj), 0);
+                prop.setValue(JSON.stringify(obj), ui);
                 return true;
             }
         } catch (e) {}
         return false;
     }
+    // hint-first, then JSON-shape auto-detect, over a property collection. Returns true if set.
+    function trySetOnList(props, ui) {
+        var k;
+        if (textLayer) {
+            for (k = 0; k < props.numItems; k++) {
+                if (props[k].displayName === textLayer && trySetJSON(props[k], ui)) return true;
+            }
+        }
+        for (k = 0; k < props.numItems; k++) {
+            if (trySetJSON(props[k], ui)) return true;
+        }
+        return false;
+    }
 
     var setOk = false;
     try {
-        // 1) hinted property/component first (when several text params exist)
-        if (textLayer) {
-            for (var i1 = 0; i1 < comps.numItems && !setOk; i1++) {
-                if (comps[i1].displayName === textLayer && comps[i1].properties.numItems) {
-                    if (trySetJSON(comps[i1].properties[0])) setOk = true;
-                }
-                var p1 = comps[i1].properties;
-                for (var k1 = 0; k1 < p1.numItems && !setOk; k1++) {
-                    if (p1[k1].displayName === textLayer && trySetJSON(p1[k1])) setOk = true;
-                }
-            }
-        }
-        // 2) auto-detect the Source-Text param by its JSON shape (textEditValue)
+        // 1) exposed MGT controls first (AE templates) — value must reach the render → updateUI=1
+        if (mgt && mgt.properties) setOk = trySetOnList(mgt.properties, 1);
+        // 2) raw clip.components (graphics / Premiere text) → updateUI=0
         for (var i2 = 0; i2 < comps.numItems && !setOk; i2++) {
-            var p2 = comps[i2].properties;
-            for (var k2 = 0; k2 < p2.numItems && !setOk; k2++) {
-                if (trySetJSON(p2[k2])) setOk = true;
-            }
+            if (trySetOnList(comps[i2].properties, 0)) setOk = true;
         }
-        // 3) fallback for simple/legacy params whose value is a plain string (not JSON)
+        // 3) plain-string fallback (simple params: hint, then "Source Text", then "Text" component)
         if (!setOk && textLayer) {
             for (var i3 = 0; i3 < comps.numItems && !setOk; i3++) {
                 if (comps[i3].displayName === textLayer && comps[i3].properties.numItems) {
@@ -149,48 +159,50 @@ function ve_diagnoseCaption(trackIdx) {
     var clip = trk.clips[0];
     out.push("clip=\"" + clip.name + "\" comps=" + clip.components.numItems);
 
-    // getMGTComponent (docs' canonical path; reportedly null in v26 — confirm here)
-    var mgtInfo = "n/a";
-    try {
-        var mgt = clip.getMGTComponent ? clip.getMGTComponent() : null;
-        if (mgt) {
-            var mp = [];
-            for (var g = 0; g < mgt.properties.numItems; g++) mp.push(mgt.properties[g].displayName);
-            mgtInfo = "props=" + mgt.properties.numItems + " [" + mp.join("/") + "]";
-        } else { mgtInfo = "null"; }
-    } catch (em) { mgtInfo = "ERR:" + em; }
-    out.push("getMGTComponent=" + mgtInfo);
+    // one property -> a dump line (name, getValue type/value, JSON+textEditValue test)
+    function dumpProp(pfx, pr) {
+        var line = pfx + " \"" + pr.displayName + "\" gv=" + (typeof pr.getValue);
+        try {
+            if (typeof pr.getValue === "function") {
+                var gv = pr.getValue();
+                var gt = typeof gv;
+                line += " gvType=" + gt;
+                if (gt === "string") {
+                    var s = gv.length > 220 ? gv.substring(0, 220) + "..." : gv;
+                    line += " val=" + s;
+                    try {
+                        var o = JSON.parse(gv);
+                        line += " json=yes tev=" + ((o && typeof o.textEditValue !== "undefined") ? "YES" : "no");
+                    } catch (ej) { line += " json=no"; }
+                } else if (gt === "object" && gv) {
+                    var so = "";
+                    try { so = JSON.stringify(gv); } catch (es) { so = "[stringifyERR]"; }
+                    if (so.length > 220) so = so.substring(0, 220) + "...";
+                    line += " objVal=" + so + " tev=" + ((typeof gv.textEditValue !== "undefined") ? "YES" : "no");
+                } else {
+                    line += " val=" + String(gv);
+                }
+            }
+        } catch (eg) { line += " GETVAL_ERR:" + eg; }
+        return line;
+    }
+
+    // getMGTComponent: AE-authored MOGRTs expose controls here; Premiere-authored ones return null.
+    var mgt = null;
+    try { mgt = clip.getMGTComponent ? clip.getMGTComponent() : null; } catch (em) { mgt = "ERR:" + em; }
+    if (mgt && typeof mgt === "object" && mgt.properties) {
+        out.push("getMGTComponent= props=" + mgt.properties.numItems + " (exposed controls below)");
+        for (var g = 0; g < mgt.properties.numItems; g++) out.push(dumpProp("  MGT[" + g + "]", mgt.properties[g]));
+    } else {
+        out.push("getMGTComponent=" + (mgt ? mgt : "null"));
+    }
 
     var comps = clip.components;
     for (var ci = 0; ci < comps.numItems; ci++) {
         var comp = comps[ci];
         out.push("[" + ci + "] \"" + comp.displayName + "\" props=" + comp.properties.numItems);
         for (var pj = 0; pj < comp.properties.numItems; pj++) {
-            var pr = comp.properties[pj];
-            var line = "  [" + pj + "] \"" + pr.displayName + "\" gv=" + (typeof pr.getValue);
-            try {
-                if (typeof pr.getValue === "function") {
-                    var gv = pr.getValue();
-                    var gt = typeof gv;
-                    line += " gvType=" + gt;
-                    if (gt === "string") {
-                        var s = gv.length > 220 ? gv.substring(0, 220) + "..." : gv;
-                        line += " val=" + s;
-                        try {
-                            var o = JSON.parse(gv);
-                            line += " json=yes tev=" + ((o && typeof o.textEditValue !== "undefined") ? "YES" : "no");
-                        } catch (ej) { line += " json=no"; }
-                    } else if (gt === "object" && gv) {
-                        var so = "";
-                        try { so = JSON.stringify(gv); } catch (es) { so = "[stringifyERR]"; }
-                        if (so.length > 220) so = so.substring(0, 220) + "...";
-                        line += " objVal=" + so + " tev=" + ((typeof gv.textEditValue !== "undefined") ? "YES" : "no");
-                    } else {
-                        line += " val=" + String(gv);
-                    }
-                }
-            } catch (eg) { line += " GETVAL_ERR:" + eg; }
-            out.push(line);
+            out.push(dumpProp("  [" + pj + "]", comp.properties[pj]));
         }
     }
     return out.join("\n");

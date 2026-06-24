@@ -46,6 +46,8 @@ button.primary:disabled { background: #5a4a33; color: #998; cursor: default; }
   margin-top: 12px; padding: 8px; max-height: 200px; overflow: auto;
   background: #1c1c1c; border: 1px solid #333; border-radius: 3px;
   font-family: Consolas, monospace; font-size: 11px; color: #bdbdbd; white-space: pre-wrap;
+  /* body sets user-select:none — re-enable here so logs/dumps can be copied */
+  user-select: text; -webkit-user-select: text; cursor: text;
 }
 
 /* Learn card (Take-Select tab) */
