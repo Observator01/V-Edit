@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- V-Edit CEP extension manifest. Premiere Pro (PPRO). Node.js enabled for AI + file work. -->
 <ExtensionManifest Version="11.0" ExtensionBundleId="com.observator01.vedit"
-    ExtensionBundleVersion="0.3.1" ExtensionBundleName="V-Edit"
+    ExtensionBundleVersion="0.3.2" ExtensionBundleName="V-Edit"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <ExtensionList>
-    <Extension Id="com.observator01.vedit.panel" Version="0.3.1"/>
+    <Extension Id="com.observator01.vedit.panel" Version="0.3.2"/>
   </ExtensionList>
   <ExecutionEnvironment>
     <HostList>

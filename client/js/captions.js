@@ -81,9 +81,9 @@ var VECaptions = (function () {
     var after = await evalHost("ve_snapshotLockedCut()");
     log("placed " + (ok + notext) + " captions (" + fail + " failed) on V" + (track + 1));
     if (notext) {
-      log("⚠ but could NOT set text on " + notext + " — the template's text layer wasn't matched.");
-      log("  " + notextSample);  // shows layers=… so you can read the real layer name
-      log("  → put that text-layer name in Settings ▸ \"Caption text layer\", or rename the layer to \"Text\" and re-export.");
+      log("⚠ but could NOT set text on " + notext + " — the template's text control wasn't matched.");
+      log("  " + notextSample);  // layers=Comp[prop/prop] … — the editable text control name is one of these
+      log("  → copy that control name (inside the [ ]) into Settings ▸ \"Caption text layer\" and Generate again.");
     }
     log("locked-cut before/after: " + before + " -> " + after +
       (before === after ? "  (V1/A1 untouched ✓)" : "  !! CHANGED — undo !!"));

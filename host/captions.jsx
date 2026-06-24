@@ -49,28 +49,37 @@ function ve_placeCaption(mogrtPath, trackIdx, tlStart, tlEnd, text, textLayer) {
     // duration
     try { var T = new Time(); T.seconds = tlEnd; clip.end = T; } catch (e2) {}
 
-    // text: set the MOGRT Source Text. The component displayName = the creator's layer name
-    // (varies per template, may be Thai), and property displayName is LOCALIZED — so don't rely
-    // on a single hardcoded name. Try, in order: explicit hint → a "Source Text" property →
-    // legacy "Text" component. (getMGTComponent() returns null in v26, so iterate components.)
+    // text: set the MOGRT Source Text. The exposed control may be a COMPONENT or a PROPERTY
+    // (ComponentParam), and its displayName is the creator's control name (e.g. "TextLayer",
+    // not "Text") and is localized — so match the hint against component AND property names,
+    // then fall back to a "Source Text" property / legacy "Text" component.
+    // (getMGTComponent() returns null in v26, so iterate clip.components.)
     var comps = clip.components;
-    var names = [];
-    for (var ni = 0; ni < comps.numItems; ni++) { names.push(comps[ni].displayName); }
+    var map = [];   // diagnostic: compName[prop0/prop1/...] for every component
+    for (var ni = 0; ni < comps.numItems; ni++) {
+        var pn = [];
+        for (var pj = 0; pj < comps[ni].properties.numItems; pj++) { pn.push(comps[ni].properties[pj].displayName); }
+        map.push(comps[ni].displayName + "[" + pn.join("/") + "]");
+    }
     var setOk = false;
     try {
-        // pass 1 — explicit hint: component whose displayName matches textLayer
+        // pass 1 — explicit hint: a COMPONENT or a PROPERTY whose displayName === textLayer
         if (textLayer) {
             for (var i1 = 0; i1 < comps.numItems && !setOk; i1++) {
                 if (comps[i1].displayName === textLayer && comps[i1].properties.numItems) {
                     comps[i1].properties[0].setValue(text, 1); setOk = true;
                 }
+                var p1 = comps[i1].properties;
+                for (var k1 = 0; k1 < p1.numItems && !setOk; k1++) {
+                    if (p1[k1].displayName === textLayer) { p1[k1].setValue(text, 1); setOk = true; }
+                }
             }
         }
         // pass 2 — a property literally named "Source Text" (English-locale MOGRT)
         for (var i2 = 0; i2 < comps.numItems && !setOk; i2++) {
-            var props = comps[i2].properties;
-            for (var j2 = 0; j2 < props.numItems && !setOk; j2++) {
-                if (props[j2].displayName === "Source Text") { props[j2].setValue(text, 1); setOk = true; }
+            var p2 = comps[i2].properties;
+            for (var k2 = 0; k2 < p2.numItems && !setOk; k2++) {
+                if (p2[k2].displayName === "Source Text") { p2[k2].setValue(text, 1); setOk = true; }
             }
         }
         // pass 3 — legacy: component named "Text", its first property
@@ -82,6 +91,6 @@ function ve_placeCaption(mogrtPath, trackIdx, tlStart, tlEnd, text, textLayer) {
     } catch (e3) { return "ERR:settext:" + e3; }
 
     var span = clip.start.seconds.toFixed(2) + "-" + clip.end.seconds.toFixed(2);
-    if (!setOk) return "ok|notext|" + span + "|layers=" + names.join("/");
+    if (!setOk) return "ok|notext|" + span + "|layers=" + map.join(" ");
     return "ok|" + span;
 }
