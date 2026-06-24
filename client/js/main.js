@@ -7,6 +7,16 @@
   var fs = require("fs");
 
   var statusEl = document.getElementById("status");
+
+  // Show the loaded extension version in the header — confirms which host code is active
+  // after a `git pull` (the .jsx only reloads on a full Premiere restart, not a panel reopen).
+  try {
+    var extRoot = cs.getSystemPath(SystemPath.EXTENSION);
+    var pkg = JSON.parse(fs.readFileSync(extRoot + "/package.json", "utf8"));
+    var logoEl = document.querySelector(".logo");
+    if (logoEl) logoEl.textContent = "V-Edit v" + pkg.version;
+  } catch (e) {}
+
   function mkLog(id) {
     var el = document.getElementById(id);
     return function (s) { el.textContent += s + "\n"; el.scrollTop = el.scrollHeight; };
