@@ -3,9 +3,9 @@
  * video-agent/tank500_captions_mogrt.py.
  *
  * RULES: never touch V1/A1. Place on the chosen video track (index >= 1) only.
- * importMGT is additive (does not ripple other tracks — verified). Text is set
- * via the Text component's Source Text setValue (getMGTComponent()=null in v26).
- * Caller frame-snaps tlStart/tlEnd before calling.
+ * importMGT is additive (does not ripple other tracks — verified). The MOGRT Source
+ * Text value is JSON (textEditValue/fontTextRunLength), not a plain string — see
+ * ve_placeCaption. Needs JSON (host/json2.js, included first). Caller frame-snaps tlStart/tlEnd.
  */
 
 var VE_TICKS = 254016000000;  // ticks per second
@@ -23,11 +23,13 @@ function ve_clearCaptionTrack(trackIdx) {
 }
 
 // Place one MOGRT caption on videoTrack[trackIdx] at [tlStart,tlEnd], set its text.
-// textLayer (optional) = the template's text component/layer name, when auto-detect can't
-// find it (a MOGRT component's displayName is the creator's layer name — often not "Text").
-// Returns "ok|start-end", or "ok|notext|start-end|layers=a/b/c" when the text couldn't be set
-// (caption placed but no editable text component matched — names listed so the user can pick one),
-// or "ERR:...".
+// A MOGRT Source Text value is a JSON object (NOT a plain string) — setValue("string")
+// just blanks the text. The correct write is: getValue() -> JSON.parse -> set textEditValue
+// + fontTextRunLength -> setValue(JSON.stringify, 0). We auto-detect the text param by that
+// JSON shape (so it works regardless of the control's name); textLayer (optional) biases which
+// property is tried first. A plain-string fallback covers simple/legacy params.
+// Returns "ok|start-end", or "ok|notext|start-end|layers=a/b/c" (placed but no text param
+// matched — component[prop/prop] map listed), or "ERR:...".
 function ve_placeCaption(mogrtPath, trackIdx, tlStart, tlEnd, text, textLayer) {
     if (trackIdx < 1) return "ERR:refuse_track0";
     var seq = app.project.activeSequence;
@@ -35,30 +37,24 @@ function ve_placeCaption(mogrtPath, trackIdx, tlStart, tlEnd, text, textLayer) {
     var t = String(Math.round(tlStart * VE_TICKS));
     var trk = seq.videoTracks[trackIdx];
     var before = trk.clips.numItems;
-    try { seq.importMGT(mogrtPath, t, trackIdx, -1); }
-    catch (e) { return "ERR:import:" + e; }
 
-    // find the newly-added clip (nearest start to tlStart)
-    var clip = null, best = 1e9;
-    for (var i = 0; i < trk.clips.numItems; i++) {
-        var d = Math.abs(trk.clips[i].start.seconds - tlStart);
-        if (d < best) { best = d; clip = trk.clips[i]; }
+    // importMGT returns the placed TrackItem (per ppro docs); fall back to nearest-start search.
+    var clip = null;
+    try { clip = seq.importMGT(mogrtPath, t, trackIdx, -1); }
+    catch (e) { return "ERR:import:" + e; }
+    if (!clip || !clip.components) {
+        var best = 1e9;
+        for (var i = 0; i < trk.clips.numItems; i++) {
+            var d = Math.abs(trk.clips[i].start.seconds - tlStart);
+            if (d < best) { best = d; clip = trk.clips[i]; }
+        }
     }
     if (!clip || trk.clips.numItems <= before) return "ERR:noclip_after_import";
 
     // duration
     try { var T = new Time(); T.seconds = tlEnd; clip.end = T; } catch (e2) {}
 
-    // text: set the MOGRT Source Text. The exposed control may be a COMPONENT or a PROPERTY
-    // (ComponentParam), and its displayName is the creator's control name (e.g. "TextLayer",
-    // not "Text") and is localized — so match the hint against component AND property names,
-    // then fall back to a "Source Text" property / legacy "Text" component.
-    // (getMGTComponent() returns null in v26, so iterate clip.components.)
-    // IMPORTANT: setValue(text, 0) — updateUI MUST be 0. For a canAnimate:false (static EGP-store)
-    // text control, updateUI=1 forces an Essential-Graphics panel sync between the generate loop's
-    // evalScript calls that re-reads the instance and reverts our text to the template default —
-    // the caption then shows for ONE frame and vanishes. updateUI=0 still writes the value (it just
-    // doesn't force a panel refresh), so it persists like a manual edit, for static AND animatable templates.
+    // ---- set the caption text ----
     var comps = clip.components;
     var map = [];   // diagnostic: compName[prop0/prop1/...] for every component
     for (var ni = 0; ni < comps.numItems; ni++) {
@@ -66,31 +62,68 @@ function ve_placeCaption(mogrtPath, trackIdx, tlStart, tlEnd, text, textLayer) {
         for (var pj = 0; pj < comps[ni].properties.numItems; pj++) { pn.push(comps[ni].properties[pj].displayName); }
         map.push(comps[ni].displayName + "[" + pn.join("/") + "]");
     }
+
+    // Proper MOGRT Source-Text write: the value is JSON {textEditValue, fontTextRunLength, ...}.
+    // Returns true if this property was a JSON text param and we set it.
+    function trySetJSON(prop) {
+        try {
+            var obj = JSON.parse(prop.getValue());
+            if (obj && typeof obj.textEditValue !== "undefined") {
+                obj.textEditValue = text;
+                obj.fontTextRunLength = [text.length];   // one font run over the whole string
+                prop.setValue(JSON.stringify(obj), 0);
+                return true;
+            }
+        } catch (e) {}
+        return false;
+    }
+
     var setOk = false;
     try {
-        // pass 1 — explicit hint: a COMPONENT or a PROPERTY whose displayName === textLayer
+        // 1) hinted property/component first (when several text params exist)
         if (textLayer) {
             for (var i1 = 0; i1 < comps.numItems && !setOk; i1++) {
                 if (comps[i1].displayName === textLayer && comps[i1].properties.numItems) {
-                    comps[i1].properties[0].setValue(text, 0); setOk = true;
+                    if (trySetJSON(comps[i1].properties[0])) setOk = true;
                 }
                 var p1 = comps[i1].properties;
                 for (var k1 = 0; k1 < p1.numItems && !setOk; k1++) {
-                    if (p1[k1].displayName === textLayer) { p1[k1].setValue(text, 0); setOk = true; }
+                    if (p1[k1].displayName === textLayer && trySetJSON(p1[k1])) setOk = true;
                 }
             }
         }
-        // pass 2 — a property literally named "Source Text" (English-locale MOGRT)
+        // 2) auto-detect the Source-Text param by its JSON shape (textEditValue)
         for (var i2 = 0; i2 < comps.numItems && !setOk; i2++) {
             var p2 = comps[i2].properties;
             for (var k2 = 0; k2 < p2.numItems && !setOk; k2++) {
-                if (p2[k2].displayName === "Source Text") { p2[k2].setValue(text, 0); setOk = true; }
+                if (trySetJSON(p2[k2])) setOk = true;
             }
         }
-        // pass 3 — legacy: component named "Text", its first property
-        for (var i3 = 0; i3 < comps.numItems && !setOk; i3++) {
-            if (comps[i3].displayName === "Text" && comps[i3].properties.numItems) {
-                comps[i3].properties[0].setValue(text, 0); setOk = true;
+        // 3) fallback for simple/legacy params whose value is a plain string (not JSON)
+        if (!setOk && textLayer) {
+            for (var i3 = 0; i3 < comps.numItems && !setOk; i3++) {
+                if (comps[i3].displayName === textLayer && comps[i3].properties.numItems) {
+                    comps[i3].properties[0].setValue(text, 0); setOk = true;
+                }
+                var p3 = comps[i3].properties;
+                for (var k3 = 0; k3 < p3.numItems && !setOk; k3++) {
+                    if (p3[k3].displayName === textLayer) { p3[k3].setValue(text, 0); setOk = true; }
+                }
+            }
+        }
+        if (!setOk) {
+            for (var i4 = 0; i4 < comps.numItems && !setOk; i4++) {
+                var p4 = comps[i4].properties;
+                for (var k4 = 0; k4 < p4.numItems && !setOk; k4++) {
+                    if (p4[k4].displayName === "Source Text") { p4[k4].setValue(text, 0); setOk = true; }
+                }
+            }
+        }
+        if (!setOk) {
+            for (var i5 = 0; i5 < comps.numItems && !setOk; i5++) {
+                if (comps[i5].displayName === "Text" && comps[i5].properties.numItems) {
+                    comps[i5].properties[0].setValue(text, 0); setOk = true;
+                }
             }
         }
     } catch (e3) { return "ERR:settext:" + e3; }

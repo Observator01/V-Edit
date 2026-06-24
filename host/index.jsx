@@ -7,11 +7,13 @@
  * parses plain strings. Errors are returned as "ERR:<message>".
  */
 
+//@include "json2.js"
 //@include "probe.jsx"
 //@include "edit-ops.jsx"
 //@include "captions.jsx"
 //@include "build-seq.jsx"
 //@include "learn.jsx"
+#include "json2.js"
 #include "probe.jsx"
 #include "edit-ops.jsx"
 #include "captions.jsx"
