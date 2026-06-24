@@ -132,3 +132,66 @@ function ve_placeCaption(mogrtPath, trackIdx, tlStart, tlEnd, text, textLayer) {
     if (!setOk) return "ok|notext|" + span + "|layers=" + map.join(" ");
     return "ok|" + span;
 }
+
+// Diagnostic dump of the FIRST clip already on videoTracks[trackIdx] — reveals exactly why text
+// won't set: whether JSON loaded, whether getMGTComponent/getValue work in this build, and what
+// each text param's value actually is. Run after a Generate (clips already placed). Read-only.
+function ve_diagnoseCaption(trackIdx) {
+    var out = [];
+    out.push("JSON=" + (typeof JSON)
+        + " parse=" + (typeof (typeof JSON === "object" ? JSON.parse : 0))
+        + " stringify=" + (typeof (typeof JSON === "object" ? JSON.stringify : 0)));
+    var seq = app.project.activeSequence;
+    if (!seq) return "ERR:no_active_sequence";
+    if (!trackIdx || trackIdx >= seq.videoTracks.numTracks) return "ERR:no_such_track " + trackIdx;
+    var trk = seq.videoTracks[trackIdx];
+    if (!trk.clips.numItems) return "ERR:no_clips_on_track (Generate first)";
+    var clip = trk.clips[0];
+    out.push("clip=\"" + clip.name + "\" comps=" + clip.components.numItems);
+
+    // getMGTComponent (docs' canonical path; reportedly null in v26 — confirm here)
+    var mgtInfo = "n/a";
+    try {
+        var mgt = clip.getMGTComponent ? clip.getMGTComponent() : null;
+        if (mgt) {
+            var mp = [];
+            for (var g = 0; g < mgt.properties.numItems; g++) mp.push(mgt.properties[g].displayName);
+            mgtInfo = "props=" + mgt.properties.numItems + " [" + mp.join("/") + "]";
+        } else { mgtInfo = "null"; }
+    } catch (em) { mgtInfo = "ERR:" + em; }
+    out.push("getMGTComponent=" + mgtInfo);
+
+    var comps = clip.components;
+    for (var ci = 0; ci < comps.numItems; ci++) {
+        var comp = comps[ci];
+        out.push("[" + ci + "] \"" + comp.displayName + "\" props=" + comp.properties.numItems);
+        for (var pj = 0; pj < comp.properties.numItems; pj++) {
+            var pr = comp.properties[pj];
+            var line = "  [" + pj + "] \"" + pr.displayName + "\" gv=" + (typeof pr.getValue);
+            try {
+                if (typeof pr.getValue === "function") {
+                    var gv = pr.getValue();
+                    var gt = typeof gv;
+                    line += " gvType=" + gt;
+                    if (gt === "string") {
+                        var s = gv.length > 220 ? gv.substring(0, 220) + "..." : gv;
+                        line += " val=" + s;
+                        try {
+                            var o = JSON.parse(gv);
+                            line += " json=yes tev=" + ((o && typeof o.textEditValue !== "undefined") ? "YES" : "no");
+                        } catch (ej) { line += " json=no"; }
+                    } else if (gt === "object" && gv) {
+                        var so = "";
+                        try { so = JSON.stringify(gv); } catch (es) { so = "[stringifyERR]"; }
+                        if (so.length > 220) so = so.substring(0, 220) + "...";
+                        line += " objVal=" + so + " tev=" + ((typeof gv.textEditValue !== "undefined") ? "YES" : "no");
+                    } else {
+                        line += " val=" + String(gv);
+                    }
+                }
+            } catch (eg) { line += " GETVAL_ERR:" + eg; }
+            out.push(line);
+        }
+    }
+    return out.join("\n");
+}

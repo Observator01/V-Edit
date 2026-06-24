@@ -118,6 +118,12 @@
     try { await VECaptions.doGenerate(cfg, clog); } catch (e) { clog("ERROR: " + e.message); }
     btn.disabled = false;
   });
+  document.getElementById("btn-diag").addEventListener("click", async function () {
+    var btn = this; btn.disabled = true; document.getElementById("clog").textContent = "";
+    try { clog(await evalHost("ve_diagnoseCaption(" + (cfg.captionTrack || 1) + ")")); }
+    catch (e) { clog("ERROR: " + e.message); }
+    btn.disabled = false;
+  });
 
   // ---- Take-Select + Learning ----
   function refreshProfileSummary() {
