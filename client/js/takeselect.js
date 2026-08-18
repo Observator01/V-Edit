@@ -26,11 +26,36 @@ var VETakeSelect = (function () {
     if (!probe.clips.length) throw new Error("active sequence has no V1 clips");
     log("raw: " + probe.name + "  fps=" + probe.fps + "  V1=" + probe.clips.length);
 
-    var audio = VEAudio.extractTimelineWav(probe.clips);
+    probe.clips.forEach(function (c) {
+      if (c.mtimeMs == null) {
+        try { c.mtimeMs = fs.statSync(c.media).mtimeMs; } catch (e) { c.mtimeMs = 0; }
+      }
+    });
+    var ckey = VECache.keyFromClips(probe.clips);
+    var chit = VECache.read(ckey);
+    var kind = VECache.hitKind(chit);
+    var audio = { wav: null, cleanup: function () {} };
+    var words = [];
     try {
-      log("transcribing (ElevenLabs Scribe)…");
-      var data = await VEProviders.scribe(fs.readFileSync(audio.wav), cfg.elevenKey, "tha");
-      var words = data.words || [];
+      if (kind === "both" || kind === "scribe") {
+        log("cache_hit scribe");
+        words = (chit.scribe && chit.scribe.words) || [];
+      } else {
+        if (kind === "wav") {
+          log("cache_hit wav");
+          audio = { wav: chit.wavPath, cleanup: function () {} };
+        } else {
+          audio = await VEAudio.extractTimelineWav(probe.clips);
+          try {
+            VECache.writeWav(ckey, audio.wav);
+            VECache.writeMeta(ckey, { name: probe.name, fps: probe.fps });
+          } catch (e) {}
+        }
+        log("transcribing (ElevenLabs Scribe)…");
+        var data = await VEProviders.scribe(fs.readFileSync(audio.wav), cfg.elevenKey, "tha");
+        words = data.words || [];
+        try { VECache.writeJson(ckey, "scribe.json", { words: words }); } catch (e) {}
+      }
       // line-level segments (wider grouping than caption cues)
       var segs = VECaptions.groupCues(words, { maxGap: 0.6, maxChars: 80, maxDur: 12 });
       log("Scribe: " + words.length + " words → " + segs.length + " line-segments");
@@ -69,23 +94,7 @@ var VETakeSelect = (function () {
   // Transcript time is the CONCATENATED timeline (extractTimelineWav joins each clip's
   // [src_i,src_o] back-to-back), so we walk a cumulative source-duration axis — NOT the
   // sequence tl_s/tl_e (which can have gaps). This is correct for single- and multi-clip raws.
-  function mapToSource(clips, tA, tB) {
-    var out = [], cum = 0;
-    for (var i = 0; i < clips.length; i++) {
-      var c = clips[i];
-      var dur = c.src_o - c.src_i;
-      var cumStart = cum, cumEnd = cum + dur;
-      cum = cumEnd;
-      var s = Math.max(tA, cumStart), e = Math.min(tB, cumEnd);
-      if (e - s <= 0.001) continue;
-      out.push({
-        media: c.media,
-        srcIn: c.src_i + (s - cumStart),
-        srcOut: c.src_i + (e - cumStart)
-      });
-    }
-    return out;
-  }
+  function mapToSource(clips, tA, tB) { return VEEdl.mapToSource(clips, tA, tB); }
 
   // ---- step 2: build the CLEAN sequence ----
   async function doBuild(cfg, log) {

@@ -64,3 +64,13 @@ button.ghost {
 }
 button.ghost:hover { background: #3d3d3d; border-color: #f7820e; }
 button.ghost:disabled { color: #666; cursor: default; }
+
+.preview {
+  margin: 10px 0; padding: 8px; background: #1c1c1c; border: 1px solid #333;
+  border-radius: 3px; max-height: 180px; overflow: auto;
+  font-family: Consolas, monospace; font-size: 11px; line-height: 1.45;
+  user-select: text; -webkit-user-select: text;
+}
+.layer-keep { color: #8fbf8f; }
+.layer-drop { color: #d08080; }
+.layer-vad { color: #e0c36a; }

@@ -1,6 +1,6 @@
 {
   "name": "v-edit",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "description": "AI Thai video editing extension for Adobe Premiere Pro (CEP)",
   "license": "MIT",
   "author": "Observator01",
@@ -9,6 +9,7 @@
     "onnxruntime-node": "^1.18.0"
   },
   "scripts": {
-    "postinstall": "node scripts/fetch-model.js"
+    "postinstall": "node scripts/fetch-model.js",
+    "test": "node --test tests/cache.test.js tests/edl.test.js tests/audio.test.js tests/run.test.js"
   }
 }

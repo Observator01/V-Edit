@@ -24,7 +24,71 @@
   var log = mkLog("log");        // Auto-Cut
   var clog = mkLog("clog");      // Captions
   var tslog = mkLog("tslog");    // Take-Select
+  var rlog = mkLog("runlog");    // Run
   function evalHost(code) { return new Promise(function (res) { cs.evalScript(code, res); }); }
+
+  function stampMtimes(clips) {
+    (clips || []).forEach(function (c) {
+      if (c.mtimeMs == null) {
+        try { c.mtimeMs = fs.statSync(c.media).mtimeMs; } catch (e) { c.mtimeMs = 0; }
+      }
+    });
+    return clips;
+  }
+
+  function runDeps() {
+    return {
+      probe: async function () { return VEAudio.parseProbe(await evalHost("ve_probeSequence()")); },
+      extract: async function (clips) { return VEAudio.extractTimelineWav(clips); },
+      vad: async function (wavPath) {
+        var t0 = Date.now();
+        var res = await VEVad.silenceGaps(fs.readFileSync(wavPath), {
+          threshold: cfg.threshold, minSilence: cfg.minSilence, tailPad: cfg.tailPad
+        });
+        return { gaps: res.gaps || [], vad_ms: Date.now() - t0 };
+      },
+      scribe: async function (wavPath) {
+        var t0 = Date.now();
+        var data = await VEProviders.scribe(fs.readFileSync(wavPath), cfg.elevenKey, "tha");
+        return { words: data.words || [], scribe_ms: Date.now() - t0 };
+      },
+      groupCues: function (words, opts) { return VECaptions.groupCues(words, opts); },
+      takeSelect: async function (segs, c) {
+        var profile = VELearning.loadProfile();
+        return VEProviders.takeSelect(segs, c.anthropicKey, {
+          model: c.takeModel, targetSecs: c.targetSecs || 90, profile: profile
+        });
+      },
+      buildClean: async function (plan) {
+        return evalHost("ve_buildCleanSeq(" + JSON.stringify(plan) + ")");
+      },
+      snapshotRaw: async function () { return evalHost("ve_snapshotLockedCut()"); },
+      setTranscript: function (words, fps) { VECaptions.setTranscript(words, fps); },
+      placeCaptions: async function () { return VECaptions.doGenerate(cfg, rlog); }
+    };
+  }
+
+  function renderPreview(sess) {
+    var el = document.getElementById("run-preview");
+    if (!sess) { el.hidden = true; el.innerHTML = ""; return; }
+    var lines = [];
+    (sess.kept || []).forEach(function (k, i) {
+      lines.push('<div class="layer-keep">KEEP [' + i + '] ' + k.start.toFixed(1) + "–" + k.end.toFixed(1)
+        + "s" + (k.reason ? "  · " + k.reason : "") + "</div>");
+    });
+    (sess.dropped || []).forEach(function (d) {
+      lines.push('<div class="layer-drop">DROP ' + d.start.toFixed(1) + "–" + d.end.toFixed(1)
+        + "s" + (d.text ? "  · " + d.text : "") + "</div>");
+    });
+    (sess.vad || []).forEach(function (g) {
+      var a = g[0], b = g[1];
+      if (b - a < (cfg.minSilence || 0.4)) return;
+      lines.push('<div class="layer-vad">VAD  ' + Number(a).toFixed(1) + "–" + Number(b).toFixed(1)
+        + "s  (preview only — not cut)</div>");
+    });
+    el.innerHTML = lines.join("") || "<div>no preview</div>";
+    el.hidden = false;
+  }
 
   // ---- tabs ----
   document.querySelectorAll(".tab").forEach(function (t) {
@@ -89,7 +153,15 @@
       var probe = VEAudio.parseProbe(await evalHost("ve_probeSequence()"));
       if (!probe.clips.length) throw new Error("active sequence has no V1 clips");
       log("sequence: " + probe.name + "  fps=" + probe.fps + "  V1=" + probe.clips.length);
-      var audio = VEAudio.extractTimelineWav(probe.clips);
+      stampMtimes(probe.clips);
+      var chit = VECache.read(VECache.keyFromClips(probe.clips));
+      var audio;
+      if (chit.wavPath) {
+        log("cache_hit wav");
+        audio = { wav: chit.wavPath, cleanup: function () {} };
+      } else {
+        audio = await VEAudio.extractTimelineWav(probe.clips);
+      }
       try {
         log("extracted timeline audio, running VAD…");
         var res = await VEVad.silenceGaps(fs.readFileSync(audio.wav),
@@ -156,5 +228,28 @@
     var btn = this; btn.disabled = true;
     try { await VETakeSelect.doBuild(cfg, tslog); } catch (e) { tslog("ERROR: " + e.message); }
     btn.disabled = false;
+  });
+
+  // ---- Run (one-pass) ----
+  var btnAnalyze = document.getElementById("btn-analyze");
+  var btnRunBuild = document.getElementById("btn-run-build");
+  btnAnalyze.addEventListener("click", async function () {
+    btnAnalyze.disabled = true; btnRunBuild.disabled = true;
+    document.getElementById("runlog").textContent = "";
+    renderPreview(null);
+    syncTarget();
+    try {
+      var sess = await VERun.analyze(cfg, rlog, runDeps());
+      renderPreview(sess);
+      btnRunBuild.disabled = false;
+    } catch (e) { rlog("ERROR: " + e.message); }
+    btnAnalyze.disabled = false;
+  });
+  btnRunBuild.addEventListener("click", async function () {
+    btnAnalyze.disabled = true; btnRunBuild.disabled = true;
+    try { await VERun.build(cfg, rlog, runDeps()); }
+    catch (e) { rlog("ERROR: " + e.message); }
+    btnAnalyze.disabled = false;
+    btnRunBuild.disabled = !VERun.getSession();
   });
 })();

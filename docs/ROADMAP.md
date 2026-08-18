@@ -27,6 +27,12 @@ into the extension, one tab at a time.
   is saved to `~/.v-edit/last-edl.json` to seed the future "learn from corrections" diff.
 - TODO next: full mistake-diff loop (auto-EDL vs the user's corrected final).
 
+## v0.3.8 — One-pass Run tab
+- New Run tab: Analyze (extract + VAD + Scribe + Claude, preview) → Build CLEAN + Captions.
+- Disk cache `~/.v-edit/cache/<key>/`. Old tabs reuse wav/scribe.
+- Parallel ffmpeg extract. Raw sequence never mutated from Run.
+- VAD is preview-only; silence tightening stays on the Auto-Cut tab (use on CLEAN).
+
 ## v0.4 — Repeat detection + Auto-Zoom
 - Detect duplicate/restarted phrases → suggest cuts.
 - Auto punch-in/zoom on emphasis beats. (Matches the reference panel's tabs.)

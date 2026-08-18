@@ -7,7 +7,7 @@ caption — so you keep the creative work (b-roll, transitions, motion, SFX).
 Built on a workflow battle-tested on real Thai talking-head product ads. Designed
 to **learn from your finished edits** and get better over time.
 
-> Status: **v0.3 — Auto-Cut Silence + Transcribe + MOGRT Captions + AI Take-Select + Learning.** See [docs/ROADMAP.md](docs/ROADMAP.md).
+> Status: **v0.3.8 — One-pass Run tab** (Analyze → preview → Build CLEAN + Captions) plus Auto-Cut, Transcribe, MOGRT, Take-Select, Learning. See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## What it does
 
@@ -52,11 +52,10 @@ Requires **Premiere Pro 24+**, **Node-enabled CEP**, **system ffmpeg** on PATH.
 
 1. Open a sequence (a Thai talking-head cut on V1/A1).
 2. **Settings** → set thresholds; add your ElevenLabs + Anthropic keys; pick your `.mogrt`.
-3. **Auto-Cut** → *Auto-Cut Silence*. Scrub to verify (Thai endings intact, no slivers).
-4. **Take-Select** → optionally *Analyze* a finished cut first (learns your style), then
-   *1 · Select* (preview the kept takes) → *2 · Build* (creates a new `… - CLEAN` sequence;
-   your raw cut is untouched). Add b-roll / SFX / captions yourself.
-5. **Captions** → *Transcribe* then *Generate Captions* (MOGRT on V2/V3, additive).
+3. **Run** → *1 · Analyze* (extract + VAD + Scribe + Claude, preview KEEP/DROP/VAD) then
+   *2 · Build CLEAN + Captions*. Raw V1/A1 is never touched. VAD is preview-only;
+   tighten silence later with **Auto-Cut** on the CLEAN sequence if needed.
+4. Old tabs still work and reuse the same disk cache (`~/.v-edit/cache/`).
 
 Your API keys live only in `~/.v-edit/config.json` and are sent only to the
 provider's own API.

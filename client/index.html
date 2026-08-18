@@ -14,14 +14,24 @@
   </header>
 
   <nav class="tabs">
-    <button class="tab active" data-tab="silence">Auto-Cut</button>
+    <button class="tab active" data-tab="run">Run</button>
+    <button class="tab" data-tab="silence">Auto-Cut</button>
     <button class="tab" data-tab="takeselect">Take-Select</button>
     <button class="tab" data-tab="captions">Captions</button>
     <button class="tab" data-tab="settings">Settings</button>
   </nav>
 
+  <!-- One-pass Run -->
+  <section class="panel active" id="tab-run">
+    <p class="hint">Analyze อ่านอย่างเดียว แล้วหยุดให้ดู take. Build สร้าง sequence ใหม่ "… - CLEAN" + แคปชัน. ไม่แตะดิบ. ชั้น VAD โชว์อย่างเดียว ไม่ถูกตัดตอน Build.</p>
+    <button id="btn-analyze" class="primary">1 · Analyze</button>
+    <div id="run-preview" class="preview" hidden></div>
+    <button id="btn-run-build" class="primary" disabled>2 · Build CLEAN + Captions</button>
+    <pre id="runlog" class="log"></pre>
+  </section>
+
   <!-- Auto-Cut Silence -->
-  <section class="panel active" id="tab-silence">
+  <section class="panel" id="tab-silence">
     <p class="hint">ตัดช่วงเงียบออกจาก sequence ที่เปิดอยู่ ด้วย Silero VAD
       (รักษาคำลงท้ายไทย). ทำงานบน V1+A1 ของ active sequence เท่านั้น.</p>
     <button id="btn-cut" class="primary">Auto-Cut Silence</button>
@@ -84,12 +94,15 @@
 
   <script src="js/CSInterface.js"></script>
   <script src="js/config.js"></script>
+  <script src="js/cache.js"></script>
+  <script src="js/edl.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/vad.js"></script>
   <script src="js/providers.js"></script>
   <script src="js/captions.js"></script>
   <script src="js/learning.js"></script>
   <script src="js/takeselect.js"></script>
+  <script src="js/run.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

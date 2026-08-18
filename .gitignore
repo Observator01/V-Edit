@@ -6,3 +6,4 @@ vendor/onnxruntime-node/
 Thumbs.db
 # local keys never go in git (they live in ~/.v-edit/config.json)
 config.json
+.superpowers/

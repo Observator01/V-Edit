@@ -43,16 +43,46 @@ var VECaptions = (function () {
     var probe = VEAudio.parseProbe(await evalHost("ve_probeSequence()"));
     if (!probe.clips.length) throw new Error("active sequence has no V1 clips");
     log("transcribing " + probe.name + " (V1=" + probe.clips.length + ")…");
-    var audio = VEAudio.extractTimelineWav(probe.clips);
+    probe.clips.forEach(function (c) {
+      if (c.mtimeMs == null) {
+        try { c.mtimeMs = fs.statSync(c.media).mtimeMs; } catch (e) { c.mtimeMs = 0; }
+      }
+    });
+    var ckey = VECache.keyFromClips(probe.clips);
+    var chit = VECache.read(ckey);
+    var kind = VECache.hitKind(chit);
+    if (kind === "both" || kind === "scribe") {
+      log("cache_hit scribe");
+      transcript = { words: (chit.scribe && chit.scribe.words) || [], fps: probe.fps };
+      var cachedCues = groupCues(transcript.words);
+      log("Scribe: " + transcript.words.length + " words -> " + cachedCues.length + " cues");
+      return cachedCues;
+    }
+    var audio;
+    if (kind === "wav") {
+      log("cache_hit wav");
+      audio = { wav: chit.wavPath, cleanup: function () {} };
+    } else {
+      audio = await VEAudio.extractTimelineWav(probe.clips);
+      try {
+        VECache.writeWav(ckey, audio.wav);
+        VECache.writeMeta(ckey, { name: probe.name, fps: probe.fps });
+      } catch (e) {}
+    }
     try {
       var buf = fs.readFileSync(audio.wav);
       var data = await VEProviders.scribe(buf, cfg.elevenKey, "tha");
       transcript = { words: data.words || [], fps: probe.fps };
+      try { VECache.writeJson(ckey, "scribe.json", { words: transcript.words }); } catch (e) {}
       var cues = groupCues(transcript.words);
       log("Scribe: " + transcript.words.length + " words -> " + cues.length + " cues");
       log("preview: " + cues.slice(0, 4).map(function (c) { return c.text; }).join(" / "));
       return cues;
     } finally { audio.cleanup(); }
+  }
+
+  function setTranscript(words, fps) {
+    transcript = { words: words || [], fps: fps };
   }
 
   // place MOGRT captions on the caption track from the cached transcript
@@ -87,7 +117,8 @@ var VECaptions = (function () {
     }
     log("locked-cut before/after: " + before + " -> " + after +
       (before === after ? "  (V1/A1 untouched ✓)" : "  !! CHANGED — undo !!"));
+    return { ok: ok, fail: fail, notext: notext };
   }
 
-  return { groupCues: groupCues, doTranscribe: doTranscribe, doGenerate: doGenerate };
+  return { groupCues: groupCues, doTranscribe: doTranscribe, doGenerate: doGenerate, setTranscript: setTranscript };
 })();
